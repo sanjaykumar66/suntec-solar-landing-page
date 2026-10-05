@@ -135,6 +135,10 @@ For instant phone alerts, enable Gmail app notifications, or in the sheet use
 `netlify.toml` already sets the build command and publish folder. Add the two environment
 variables under *Site configuration → Environment variables*, then attach your domain.
 
+**Vercel:** import the repo — `vercel.json` already sets the build command (`npm run generate`) and
+output folder (`.output/public`). Add the same two environment variables under *Settings → Environment
+Variables* (Production), then redeploy whenever you change them.
+
 Any static host also works (Cloudflare Pages, Vercel, GitHub Pages, cPanel): run
 `npm run generate` and upload `.output/public`.
 

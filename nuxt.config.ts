@@ -64,6 +64,9 @@ export default defineNuxtConfig({
   },
 
   image: {
+    // Pre-generate every image size at build time into the static output. Without this, @nuxt/image
+    // auto-switches to the host's image CDN (e.g. Vercel) — host-specific and quota-limited.
+    provider: 'ipxStatic',
     format: ['webp'],
     quality: 78,
   },
@@ -106,6 +109,9 @@ export default defineNuxtConfig({
 
   // Fully static output (`npm run generate`) — host on Netlify, Cloudflare Pages, GitHub Pages, etc.
   nitro: {
+    // Same plain static output on every host. (Vercel's auto-selected "vercel-static" preset
+    // skips pre-generating /_ipx images, which leaves every photo broken.) See vercel.json.
+    preset: 'static',
     prerender: {
       crawlLinks: true,
       // Case-study pages are also listed explicitly in case nothing links to one yet.
