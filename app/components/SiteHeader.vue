@@ -33,7 +33,7 @@ watch(() => route.fullPath, () => (open.value = false))
     <div class="container">
       <NuxtLinkLocale class="brand" to="/" :aria-label="`${company.name} — ${c.nav.home}`">
         <img src="/img/logo.jpg" :alt="c.common.logoAlt" width="57" height="52">
-        <span class="brand-text"><strong>SUNTEC SOLAR</strong><small>Renewable Systems</small></span>
+        <span class="brand-text"><strong>SUNTEC</strong><small>Renewable Systems</small></span>
       </NuxtLinkLocale>
       <button
         class="nav-toggle"
