@@ -6,6 +6,7 @@
     "dev": "nuxt dev",
     "build": "nuxt build",
     "generate": "nuxt generate",
+    "postgenerate": "node -e \"require('fs').rmSync('.output/public/200.html',{force:true})\"",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "test": "vitest run",
