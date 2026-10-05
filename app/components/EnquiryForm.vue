@@ -19,7 +19,13 @@ onMounted(() => (form.product = presetProduct()))
 watch(() => route.query.product, () => (form.product = presetProduct()))
 
 const sending = ref(false)
-const status = ref<{ kind: 'ok' | 'err'; message: string } | null>(null)
+const status = ref<{ kind: 'ok' | 'err' | 'info'; message: string } | null>(null)
+
+// Google Apps Script can take 10–20 s to wake up after being idle ("cold start").
+/** After this long, reassure the visitor that the enquiry is still being sent. */
+const SLOW_NOTICE_MS = 4_000
+/** Give up after this long and show the call-us fallback instead of spinning forever. */
+const TIMEOUT_MS = 45_000
 
 const fallback = computed(() => fill(f.value.fallback, { phone: company.phones[0].display, email: company.email }))
 
@@ -40,11 +46,14 @@ async function submit() {
 
   sending.value = true
   status.value = null
+  const controller = new AbortController()
+  const slowTimer = setTimeout(() => (status.value = { kind: 'info', message: f.value.slow }), SLOW_NOTICE_MS)
+  const abortTimer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
     // URL-encoded body keeps this a "simple" CORS request (no preflight), which Apps Script accepts.
     // Option values are always English so the Sheet stays consistent; `language` records the page locale.
     const body = new URLSearchParams({ ...form, language: locale.value, page: window.location.href })
-    const res = await fetch(enquiryEndpoint, { method: 'POST', body })
+    const res = await fetch(enquiryEndpoint, { method: 'POST', body, signal: controller.signal })
     const data: unknown = await res.json()
     const result = (data as { result?: string; error?: string }) ?? {}
     if (!res.ok || result.result !== 'success') throw new Error(result.error || `HTTP ${res.status}`)
@@ -55,6 +64,8 @@ async function submit() {
     console.error('Enquiry submission failed:', err)
     status.value = { kind: 'err', message: `${f.value.failed} ${fallback.value}` }
   } finally {
+    clearTimeout(slowTimer)
+    clearTimeout(abortTimer)
     sending.value = false
   }
 }

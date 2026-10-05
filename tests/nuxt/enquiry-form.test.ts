@@ -249,6 +249,78 @@ describe('EnquiryForm — submission', () => {
   })
 })
 
+describe('EnquiryForm — slow Google responses', () => {
+  beforeEach(() => vi.stubGlobal('fetch', fetchMock))
+  afterEach(() => vi.useRealTimers())
+
+  /** A fetch that never answers until aborted — like Apps Script during a long cold start. */
+  function hangUntilAborted() {
+    fetchMock.mockImplementationOnce((_url: string, init: RequestInit) =>
+      new Promise<Response>((_, reject) =>
+        init.signal!.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError'))),
+      ),
+    )
+  }
+
+  it('reassures the visitor after 4 seconds, then shows success when the reply arrives', async () => {
+    let release!: () => void
+    fetchMock.mockImplementationOnce(() => new Promise<Response>((r) => (release = () => r(new Response('{"result":"success"}')))))
+    const w = await mountForm()
+    await fill(w, valid)
+    vi.useFakeTimers()
+    await w.find('form').trigger('submit')
+
+    await vi.advanceTimersByTimeAsync(3_900)
+    expect(status(w).text()).toBe('')
+
+    await vi.advanceTimersByTimeAsync(200)
+    expect(status(w).classes()).toContain('info')
+    expect(status(w).text()).toBe('Still sending — this can take up to 30 seconds. Please keep this page open.')
+    expect(w.find('button[type="submit"]').attributes('disabled')).toBeDefined()
+
+    release()
+    await vi.runAllTimersAsync()
+    await flushPromises()
+    expect(status(w).classes()).toContain('ok')
+    expect(status(w).text()).toContain('Thank you!')
+  })
+
+  it('gives up after 45 seconds and shows the call-us fallback', async () => {
+    hangUntilAborted()
+    const w = await mountForm()
+    await fill(w, valid)
+    vi.useFakeTimers()
+    await w.find('form').trigger('submit')
+
+    await vi.advanceTimersByTimeAsync(44_000)
+    expect(status(w).classes()).toContain('info') // still waiting
+
+    await vi.advanceTimersByTimeAsync(1_500)
+    await flushPromises()
+    expect(status(w).classes()).toContain('err')
+    expect(status(w).text()).toContain('Please call us on 98435 02872')
+    expect(w.find('button[type="submit"]').attributes('disabled')).toBeUndefined()
+    expect((w.find('#name').element as HTMLInputElement).value).toBe('Ravi Kumar') // input kept for retry
+  })
+
+  it('does not show the slow notice for a fast reply', async () => {
+    const w = await mountForm()
+    await fill(w, valid)
+    vi.useFakeTimers()
+    await w.find('form').trigger('submit')
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(status(w).classes()).toContain('ok')
+  })
+
+  it('passes an abort signal to fetch', async () => {
+    const w = await mountForm()
+    await fill(w, valid)
+    await submit(w)
+    expect(fetchMock.mock.calls[0]![1].signal).toBeInstanceOf(AbortSignal)
+  })
+})
+
 describe('EnquiryForm — Tamil', () => {
   beforeEach(() => vi.stubGlobal('fetch', fetchMock))
 
@@ -266,6 +338,21 @@ describe('EnquiryForm — Tamil', () => {
     expect(w.find('label[for="name"]').text()).toContain('முழுப் பெயர்')
     expect(w.find('#product option[value="Hybrid Solar"]').text()).toBe('ஹைப்ரிட் சோலார்')
     expect(w.find('button[type="submit"]').text()).toBe('விசாரணையைச் சமர்ப்பிக்கவும்')
+  })
+
+  it('shows the slow-sending notice in Tamil', async () => {
+    let release!: () => void
+    fetchMock.mockImplementationOnce(() => new Promise<Response>((r) => (release = () => r(new Response('{"result":"success"}')))))
+    const w = await mountTamil()
+    await fill(w, valid)
+    vi.useFakeTimers()
+    await w.find('form').trigger('submit')
+    await vi.advanceTimersByTimeAsync(4_100)
+    expect(status(w).text()).toContain('இன்னும் அனுப்பிக்கொண்டிருக்கிறது')
+    release()
+    await vi.runAllTimersAsync()
+    vi.useRealTimers()
+    await flushPromises()
   })
 
   it('shows validation errors in Tamil', async () => {

@@ -324,6 +324,7 @@ const en: SiteContent = {
     select: 'Select…',
     submit: 'Submit Enquiry',
     sending: 'Sending…',
+    slow: 'Still sending — this can take up to 30 seconds. Please keep this page open.',
     success: 'Thank you! Your enquiry has been received. Our team will contact you within one working day.',
     notConfigured: 'Online enquiries are not configured yet.',
     failed: "Sorry, we couldn't send your enquiry.",

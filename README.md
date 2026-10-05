@@ -120,6 +120,14 @@ environment and redeploy after changing them.
 - The **Enquiries tab turns orange** while any enquiry is still New, and clears automatically once none are.
 - The alert email's "Open enquiries sheet" link jumps straight to the newest row.
 
+### Slow first submission (cold start)
+
+Google takes 10–20 s to wake an idle script, so the first enquiry after a quiet period is slow.
+The form tells the visitor to keep the page open after 4 s, and gives up with the call-us message after 45 s.
+To reduce the wait, open the Apps Script editor, choose **installKeepWarm** and click **Run** once
+(approve the permission prompt). It pings the script every 10 minutes — no rows, no emails.
+Run **removeKeepWarm** to stop it.
+
 To apply the dropdown and tab colour to rows that existed before this version, open the Apps Script
 editor, choose **setup** in the function list and click **Run** once.
 

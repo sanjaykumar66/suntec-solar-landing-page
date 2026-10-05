@@ -59,7 +59,23 @@ function fakeSheet() {
 function loadScript() {
   const fake = fakeSheet()
   const sent: Sent[] = []
+  const triggers: { handler: string; log: unknown[] }[] = []
+  const ScriptApp = {
+    getProjectTriggers: () => triggers.map((t) => ({ getHandlerFunction: () => t.handler, _t: t })),
+    deleteTrigger: (t: { _t: (typeof triggers)[number] }) => triggers.splice(triggers.indexOf(t._t), 1),
+    newTrigger: (handler: string) => {
+      const log: unknown[] = []
+      const b: Record<string, (...a: unknown[]) => unknown> = new Proxy({}, {
+        get: (_, prop: string) => (...a: unknown[]) => {
+          if (prop === 'create') { triggers.push({ handler, log }); return {} }
+          log.push([prop, ...a]); return b
+        },
+      })
+      return b
+    },
+  }
   const sandbox = {
+    ScriptApp,
     console,
     Date,
     SpreadsheetApp: {
@@ -82,6 +98,9 @@ function loadScript() {
   const ctx = sandbox as unknown as {
     doPost: (e: { parameter: Record<string, string> }) => { body: { result: string; error?: string } }
     onEdit: (e: unknown) => void
+    installKeepWarm: () => void
+    removeKeepWarm: () => void
+    keepWarm: () => void
   }
   return {
     post: (p: Record<string, string>) => ctx.doPost({ parameter: p }).body,
@@ -90,6 +109,8 @@ function loadScript() {
       ctx.onEdit({ range: fake.sheet.getRange(row, fake.rows[0]!.length) })
     },
     sent,
+    triggers,
+    ctx,
     ...fake,
   }
 }
@@ -179,5 +200,30 @@ describe('Code.gs doPost', () => {
     const s = loadScript()
     s.post({ ...enquiry, email: 'not-an-email' })
     expect(s.sent[0]!.options.replyTo).toBeUndefined()
+  })
+})
+
+describe('Code.gs keep-warm timer', () => {
+  it('installs a single 10-minute trigger, even when run twice', () => {
+    const s = loadScript()
+    s.ctx.installKeepWarm()
+    s.ctx.installKeepWarm()
+    expect(s.triggers).toHaveLength(1)
+    expect(s.triggers[0]!.handler).toBe('keepWarm')
+    expect(s.triggers[0]!.log).toEqual([['timeBased'], ['everyMinutes', 10]])
+  })
+
+  it('removeKeepWarm deletes the trigger', () => {
+    const s = loadScript()
+    s.ctx.installKeepWarm()
+    s.ctx.removeKeepWarm()
+    expect(s.triggers).toHaveLength(0)
+  })
+
+  it('keepWarm never writes rows or sends email', () => {
+    const s = loadScript()
+    s.ctx.keepWarm()
+    expect(s.rows).toHaveLength(0)
+    expect(s.sent).toHaveLength(0)
   })
 })

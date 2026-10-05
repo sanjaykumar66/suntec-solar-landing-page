@@ -187,6 +187,7 @@ textarea { min-height: 120px; resize: vertical; }
 .form-status.show { display: block; }
 .form-status.ok { background: #e8f7e1; color: #2f6b1b; }
 .form-status.err { background: #fdecec; color: #a3161d; }
+.form-status.info { background: #eef4fb; color: var(--navy); font-weight: 400; }
 .info-card { background: var(--navy); color: #dbe3ec; border-radius: var(--radius); padding: 30px; }
 .info-card h3 { color: #fff; }
 .info-card a { color: #fff; text-decoration: none; }

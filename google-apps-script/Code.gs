@@ -5,6 +5,7 @@
  * - New enquiries are highlighted; the Status dropdown recolours the row as the team follows up.
  * - The tab turns orange while any enquiry is still "New".
  * - Emails the admin(s) a notification for each new enquiry.
+ * - Optional keep-warm timer (run installKeepWarm once) to reduce slow first submissions.
  *
  * Setup: see README.md → "Enquiry form setup".
  * After editing this file: Deploy → Manage deployments → Edit → Version: New version → Deploy.
@@ -39,6 +40,7 @@ const STATUSES = [
   { name: 'Lost', background: '#eeeeee', fontColor: '#888888' },
 ];
 const NEW_TAB_COLOR = '#f28c28';
+const KEEP_WARM_MINUTES = 10;
 
 const HEADERS = ['Received At'].concat(FIELDS.map(([, label]) => label), ['Status']);
 const STATUS_COL = HEADERS.length; // last column
@@ -94,6 +96,32 @@ function setup() {
     sheet.getRange(2, 1, last - 1, 1).setNumberFormat('dd-mmm-yyyy hh:mm');
   }
   refreshTabColor_(sheet);
+}
+
+/**
+ * Run ONCE from the Apps Script editor (choose installKeepWarm → Run) to start the keep-warm timer.
+ * Safe to run again: it replaces any existing keep-warm timer instead of adding another.
+ */
+function installKeepWarm() {
+  ScriptApp.getProjectTriggers()
+    .filter((t) => t.getHandlerFunction() === 'keepWarm')
+    .forEach((t) => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('keepWarm').timeBased().everyMinutes(KEEP_WARM_MINUTES).create();
+}
+
+/** Run from the editor to stop the keep-warm timer. */
+function removeKeepWarm() {
+  ScriptApp.getProjectTriggers()
+    .filter((t) => t.getHandlerFunction() === 'keepWarm')
+    .forEach((t) => ScriptApp.deleteTrigger(t));
+}
+
+/**
+ * Called by the timer. Touches the spreadsheet so Google keeps this project loaded, which shortens
+ * the 10–20 s "cold start" a visitor otherwise waits for. Never writes rows or sends email.
+ */
+function keepWarm() {
+  SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
 }
 
 function getSheet_() {

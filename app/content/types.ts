@@ -156,6 +156,7 @@ export interface SiteContent {
     select: string
     submit: string
     sending: string
+    slow: string
     success: string
     notConfigured: string
     failed: string
